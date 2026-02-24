@@ -31,10 +31,11 @@ def preprocess_sales_data():
     # add merchant currency for completeness
     df2['Merchant Currency'] = 'EUR'
     # remove comma from buyer amount and convert to float
-    df2['Amount (Buyer Currency)'] = df2['Amount (Buyer Currency)'].str.replace(',', '')
-    df2['Amount (Buyer Currency)'] = df2['Amount (Buyer Currency)'].astype(float)
+    df2['Amount (Buyer Currency)'] = (df2['Amount (Buyer Currency)'].astype(str).str.strip().str.replace(',', '', regex=False))
+    df2['Amount (Buyer Currency)'] =  pd.to_numeric(df2['Amount (Buyer Currency)'], errors='coerce')
     #df2['Currency Conversion Rate'] = df2['Currency Conversion Rate'].astype(float)
     df2['Amount (Merchant Currency)'] = df2['Amount (Buyer Currency)'] / df2['Currency Conversion Rate']
+    print(df2[df2['Amount (Merchant Currency)'].isna()]['Buyer Currency'].unique())
     # filter for necessary columns in both dataframes before merging them
     df1 = df1[['Transaction Date', 'Transaction Type', 'Product id', 'Sku Id', 'Buyer Country', 'Buyer Postal Code', 'Amount (Merchant Currency)', 'Merchant Currency']]
     df2 = df2[['Transaction Date', 'Transaction Type', 'Product id', 'Sku Id', 'Buyer Country', 'Buyer Postal Code', 'Amount (Merchant Currency)', 'Merchant Currency']]
