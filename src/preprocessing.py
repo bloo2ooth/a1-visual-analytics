@@ -55,4 +55,11 @@ def preprocess_review_data():
     df_reviews = df_reviews.groupby(['Package Name', 'Date'])['Star Rating'].mean().reset_index()
     df_final = df_reviews.merge(df_stats_ratings, on=['Date', 'Package Name'], how='left')
     return df_final
-preprocess_review_data()
+
+def get_sales_volume():
+    df_sales = pd.read_csv("Data/processed_sales_data.csv")
+    country_sales = df_sales.groupby(['Buyer Country', 'Sku Id'])['Amount (Merchant Currency)'].sum().reset_index()
+    print(country_sales)
+    return country_sales
+
+get_sales_volume()
