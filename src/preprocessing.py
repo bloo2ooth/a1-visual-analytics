@@ -1,5 +1,7 @@
+from numpy import rint
 import pandas as pd
 import os
+from data_loading import load_review_data
 
 def preprocess_sales_data():
     # get the first four csv sale files as they have same format
@@ -43,4 +45,14 @@ def preprocess_sales_data():
     # save final file
     df_complete.to_csv("Data/processed_sales_data.csv", index=False)
 
-preprocess_sales_data()
+def preprocess_review_data():
+    df_reviews, df_stats_ratings = load_review_data()
+    # split date and timestamp column
+    df_reviews[['Date', 'Timestamp']] = df_reviews['Review Submit Date and Time'].str.split('T', expand=True)
+    # remove reviews where creation was before 2021-06 as we care about creation of reviews not edit
+    df_reviews = df_reviews[df_reviews['Date'] >= '2021-06-01']
+    # get the mean rating per day
+    df_reviews = df_reviews.groupby(['Package Name', 'Date'])['Star Rating'].mean().reset_index()
+    df_final = df_reviews.merge(df_stats_ratings, on=['Date', 'Package Name'], how='left')
+    return df_final
+preprocess_review_data()
