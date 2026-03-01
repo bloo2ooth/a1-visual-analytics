@@ -42,6 +42,9 @@ def preprocess_sales_data():
     df1 = df1[['Transaction Date', 'Transaction Type', 'Product id', 'Sku Id', 'Buyer Country', 'Buyer Postal Code', 'Amount (Merchant Currency)', 'Merchant Currency']]
     df2 = df2[['Transaction Date', 'Transaction Type', 'Product id', 'Sku Id', 'Buyer Country', 'Buyer Postal Code', 'Amount (Merchant Currency)', 'Merchant Currency']]
     df_complete = pd.concat([df1, df2], ignore_index=True)
+    # standardize transaction type and remove google fee transactions
+    df_complete = df_complete[df_complete['Transaction Type'].str.contains('Google') == False]
+    df_complete = df_complete.replace({'Transaction Type': {'Charge': 'Charged', 'Charge refund': 'Refund'}})
     # save final file
     df_complete.to_csv("Data/processed_sales_data.csv", index=False)
 
@@ -60,7 +63,13 @@ def preprocess_review_crash_data():
 
 def get_sales_volume():
     df_sales = pd.read_csv("Data/processed_sales_data.csv")
-    country_sales = df_sales.groupby(['Buyer Country', 'Sku Id'])['Amount (Merchant Currency)'].sum().reset_index()
-    print(country_sales)
-    return country_sales
-
+    # filter for right product 
+    df_sales = df_sales[df_sales['Product id'] == 'com.vansteinengroentjes.apps.ddfive']
+    # transform date to datetime format
+    df_sales['Transaction Date'] = pd.to_datetime(df_sales['Transaction Date'], format='mixed')
+    df_sales['Month'] = df_sales['Transaction Date'].dt.to_period('M')
+    # group by month 
+    df_monthly_sales = df_sales.groupby('Month').agg(sales_volume=('Amount (Merchant Currency)', 'sum'), 
+                                                     num_transactions=('Amount (Merchant Currency)', 'count'),
+                                                     num_refunds=('Transaction Type', lambda x: (x=='Refund').sum())).reset_index()
+    return df_monthly_sales
