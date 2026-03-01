@@ -45,15 +45,17 @@ def preprocess_sales_data():
     # save final file
     df_complete.to_csv("Data/processed_sales_data.csv", index=False)
 
-def preprocess_review_data():
+def preprocess_review_crash_data():
     df_reviews, df_stats_ratings = load_review_data()
     # split date and timestamp column
     df_reviews[['Date', 'Timestamp']] = df_reviews['Review Submit Date and Time'].str.split('T', expand=True)
     # remove reviews where creation was before 2021-06 as we care about creation of reviews not edit
     df_reviews = df_reviews[df_reviews['Date'] >= '2021-06-01']
     # get the mean rating per day
-    df_reviews = df_reviews.groupby(['Package Name', 'Date'])['Star Rating'].mean().reset_index()
+    df_reviews = df_reviews.groupby(['Package Name', 'Date']).agg(avg_rating=('Star Rating', 'mean'),review_count=('Star Rating', 'count')).reset_index()
     df_final = df_reviews.merge(df_stats_ratings, on=['Date', 'Package Name'], how='left')
+    # convert datetime to datetime format for bokeh 
+    df_final["Date"] = pd.to_datetime(df_final["Date"])
     return df_final
 
 def get_sales_volume():
@@ -62,4 +64,3 @@ def get_sales_volume():
     print(country_sales)
     return country_sales
 
-get_sales_volume()

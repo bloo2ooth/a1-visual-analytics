@@ -10,5 +10,3 @@ def load_review_data():
     print(df_reviews.isna().sum())
     return df_reviews, df_stats_ratings
 
-
-load_review_data()
