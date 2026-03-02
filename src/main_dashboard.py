@@ -1,11 +1,11 @@
 from bokeh.plotting import figure, show
 from bokeh.layouts import row, column
-from bokeh.models import ColumnDataSource, HoverTool, DateRangeSlider, Range1d, LinearColorMapper, GeoJSONDataSource, DateSlider, LinearAxis
+from bokeh.models import ColumnDataSource, HoverTool, DateRangeSlider, Range1d, LinearColorMapper, GeoJSONDataSource, DateSlider, LinearAxis, ColorBar
 from bokeh.palettes import Viridis256
 from bokeh.transform import dodge
 from bokeh.io import curdoc
 from datetime import timedelta
-from preprocessing import preprocess_review_crash_data, get_sales_volume, get_world_daily_sales
+from preprocessing import preprocess_review_crash_data, get_sales_volume, get_world_daily_sales, get_sales_by_sku
 import pandas as pd
 
 
@@ -15,7 +15,7 @@ source1 = ColumnDataSource(df_reviews_crash_data)
 
 fig1 = figure(
     title="Star Rating vs Daily Crashes",
-    width=600,
+    width=700,
     height=300,
     x_range=Range1d(0, 5 + 0.5),
     y_range=Range1d(0, df_reviews_crash_data["Daily Crashes"].max() + 5)
@@ -62,7 +62,7 @@ source2 = ColumnDataSource(df_monthly_sales)
 
 fig2 = figure(
     title="Monthly Sales Volume and Transaction/Refund Count",
-    width=800,
+    width=700,
     height=400,
     x_axis_type="datetime"
 )
@@ -73,9 +73,9 @@ fig2.y_range = Range1d(start=0, end=df_monthly_sales['sales_volume'].max())
 fig2.extra_y_ranges = {"refund": Range1d(start=0, end=df_monthly_sales['num_refunds'].max()+1)}
 fig2.add_layout(LinearAxis(y_range_name="refund", axis_label="Number of Refunds"), 'right')
 
-fig2.vbar(x=dodge('Month', -1, range=fig2.x_range),width=timedelta(days=4), top='sales_volume', source=source2, color='red')
-fig2.vbar(x=dodge('Month', -1, range=fig2.x_range), width=timedelta(days=4), top='num_transactions', source=source2, color='blue')
-fig2.line(x='Month', y='num_refunds', y_range_name='refund', source=source2, color='green')
+fig2.vbar(x=dodge('Month', -1, range=fig2.x_range),width=timedelta(days=4), top='sales_volume', source=source2, color='red', legend_label="Sales Volume")
+fig2.vbar(x=dodge('Month', 100000000, range=fig2.x_range), width=timedelta(days=4), top='num_transactions', source=source2, color='blue', legend_label="Transactions")
+fig2.line(x='Month', y='num_refunds', y_range_name='refund', source=source2, color='green', legend_label="Refunds")
 
 
 hover2 = HoverTool()
@@ -100,8 +100,8 @@ source3 = GeoJSONDataSource(
 )
 
 fig3 = figure(
-    title="Monthly Sales Volume and Transaction/Refund Count",
-    width=800,
+    title="World Map Sales Volume Visualization",
+    width=700,
     height=400,
     x_axis_type="datetime"
 )
@@ -126,6 +126,10 @@ date_slider_world = DateSlider(
     value=df_world_sales["Transaction Date"].min(),
     step=1
 )
+# add legend for colormap 
+color_bar = ColorBar(color_mapper=color_mapper, label_standoff=12, location=(0,0), title="Sales Volume")
+
+fig3.add_layout(color_bar, 'right')
 
 def update_world_sales_plot(attr, old, new):
     date = date_slider_world.value
@@ -135,6 +139,35 @@ def update_world_sales_plot(attr, old, new):
 
 date_slider_world.on_change("value", update_world_sales_plot)
 
-layout = row(column(date_range, fig1), column(fig2, date_slider_world, fig3))
+df_sku = get_sales_by_sku()
+source4_premium = ColumnDataSource(df_sku[df_sku['Sku Id'] == 'premium'])
+source4_character = ColumnDataSource(df_sku[df_sku['Sku Id'] == 'unlockcharactermanager'])
+
+fig4 = figure(
+    title="Monthly Sales Volume split by Sku ID",
+    width=700,
+    height=400,
+    x_axis_type="datetime"
+)
+fig4.xaxis.axis_label = 'Month'
+fig4.yaxis.axis_label = 'Monthly Sales Volume in EUR'
+fig4.y_range = Range1d(start=0, end=df_monthly_sales['sales_volume'].max())
+
+fig4.vbar(x=dodge('Month', -1, range=fig4.x_range),width=timedelta(days=4), top='revenue', source=source4_premium, color='red', legend_label="Premium")
+fig4.vbar(x=dodge('Month', 100000000, range=fig4.x_range), width=timedelta(days=4), top='transactions', source=source4_character, color='blue', legend_label="Character Manager")
+
+hover4 = HoverTool()
+hover4.tooltips=[
+    ('Month and Year', '@Month{%B-%Y}'),
+    ('Monthly Sale Volume', '@{revenue}'),
+    ('Number of Transactions', '@{transactions}')
+]
+hover4.formatters = {
+    '@Month': 'datetime'
+}
+
+fig4.add_tools(hover4)
+
+layout = row(column(fig4, date_range, fig1), column(fig2, date_slider_world, fig3))
 
 curdoc().add_root(layout)
