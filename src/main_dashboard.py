@@ -69,12 +69,23 @@ fig1b.add_tools(hover1b)
 
 def update_rating_crash_plot(attr, old, new):
     start, end = date_range.value
-    filtered = df_reviews_crash_data[
-        (df_reviews_crash_data["Date"] >= pd.to_datetime(start, unit='ms')) &
-        (df_reviews_crash_data["Date"] <= pd.to_datetime(end, unit='ms'))
-    ]
+    start_dt = pd.to_datetime(start, unit='ms')
+    end_dt   = pd.to_datetime(end, unit='ms')
 
-    source1.data = filtered.to_dict('list') 
+    # filter scatter/time series data
+    filtered = df_reviews_crash_data[
+        (df_reviews_crash_data["Date"] >= start_dt) &
+        (df_reviews_crash_data["Date"] <= end_dt)
+    ]
+    source1.data = filtered.to_dict('list')
+
+    # also filter sku chart by same date range
+    filtered_sku = df_sku[
+        (df_sku["Month"] >= start_dt) &
+        (df_sku["Month"] <= end_dt)
+    ]
+    source4_premium.data   = filtered_sku[filtered_sku['Sku Id'] == 'premium'].to_dict('list')
+    source4_character.data = filtered_sku[filtered_sku['Sku Id'] == 'unlockcharactermanager'].to_dict('list')
 
 date_range.on_change("value", update_rating_crash_plot)
 
