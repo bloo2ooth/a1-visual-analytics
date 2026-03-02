@@ -16,10 +16,9 @@ source1 = ColumnDataSource(df_reviews_crash_data)
 fig1 = figure(
     title="Star Rating vs Daily Crashes",
     width=700,
-    height=300,
+    sizing_mode="stretch_width",
     x_range=Range1d(0, 5 + 0.5),
-    y_range=Range1d(0, df_reviews_crash_data["Daily Crashes"].max() + 5),
-    sizing_mode="stretch_width"
+    y_range=Range1d(0, df_reviews_crash_data["Daily Crashes"].max() + 5)
 )
 fig1.scatter(x='avg_rating', y='Daily Crashes', source=source1, size=8, color='red', alpha=0.7)
 fig1.xaxis.axis_label = 'Average Star Rating'
@@ -48,8 +47,7 @@ fig1.add_tools(hover1)
 # crashes and ANRs over time 
 fig1b = figure(                                                                     
     title="Daily Crashes and ANRs over Time",                                       
-    height=250,                                                                     
-    width=700,                                                                      
+    height=250,                                                                                                                                           
     x_axis_type="datetime", sizing_mode="stretch_width"                                                          
 )                                                                                   
 fig1b.line(x='Date', y='Daily Crashes', source=source1,                            
@@ -101,7 +99,6 @@ source2 = ColumnDataSource(df_monthly_sales)
 
 fig2 = figure(
     title="Monthly Sales Volume and Transaction/Refund Count",
-    width=700,
     height=400,
     x_axis_type="datetime", sizing_mode="stretch_width"
 )
@@ -156,7 +153,6 @@ map_metric_select = Select(
 )                                                                                   
 fig3 = figure(
     title="World Map Sales Volume Visualization",
-    width=700,
     height=400, sizing_mode="stretch_width"
 )
 # create color map
@@ -219,7 +215,6 @@ source4_character = ColumnDataSource(df_sku[df_sku['Sku Id'] == 'unlockcharacter
 
 fig4 = figure(
     title="Monthly Sales Volume split by Sku ID",
-    width=700,
     height=400,
     x_axis_type="datetime", sizing_mode="stretch_width"
 )
@@ -247,8 +242,9 @@ hover4.formatters = {
 fig4.add_tools(hover4)
 
 layout = row(
-    column(fig4, date_range, fig1, fig1b),
-    column(fig2, map_metric_select, date_slider_world, fig3), sizing_mode="stretch_width"
+    column(fig4, date_range, fig1, fig1b, sizing_mode="stretch_width"),
+    column(fig2, map_metric_select, date_slider_world, fig3, sizing_mode="stretch_width"),
+    sizing_mode="stretch_width"
 )
 
 curdoc().add_root(layout)
