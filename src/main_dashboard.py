@@ -59,6 +59,11 @@ fig1b.line(x='Date', y='Daily ANRs', source=source1,
 fig1b.xaxis.axis_label = 'Date'                                                    
 fig1b.yaxis.axis_label = 'Count'                                                   
 fig1b.legend.click_policy = "hide"         
+# add secondary y axis for review count
+fig1b.extra_y_ranges = {"reviews": Range1d(start=0, end=df_reviews_crash_data['review_count'].max() + 5)}
+fig1b.add_layout(LinearAxis(y_range_name="reviews", axis_label="Review Count"), 'right')
+fig1b.line(x='Date', y='review_count', y_range_name='reviews', source=source1,
+           color='purple', legend_label="Review Count", line_dash='dashed')
 hover1b = HoverTool()
 hover1b.tooltips = [
     ('Date', '@Date{%F}'),
@@ -110,7 +115,7 @@ fig2.add_layout(LinearAxis(y_range_name="refund", axis_label="Number of Refunds"
 fig2.vbar(x=dodge('Month', -1, range=fig2.x_range),width=timedelta(days=4), top='sales_volume', source=source2, color='red', legend_label="Sales Volume")
 fig2.vbar(x=dodge('Month', 100000000, range=fig2.x_range), width=timedelta(days=4), top='num_transactions', source=source2, color='blue', legend_label="Transactions")
 fig2.line(x='Month', y='num_refunds', y_range_name='refund', source=source2, color='green', legend_label="Refunds")
-
+fig2.legend.click_policy = "hide"
 
 hover2 = HoverTool()
 hover2.tooltips=[
