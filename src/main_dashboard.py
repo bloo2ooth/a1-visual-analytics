@@ -217,8 +217,12 @@ fig4.xaxis.axis_label = 'Month'
 fig4.yaxis.axis_label = 'Monthly Sales Volume in EUR'
 fig4.y_range = Range1d(start=0, end=df_monthly_sales['sales_volume'].max())
 
-fig4.vbar(x=dodge('Month', -timedelta(days=3), range=fig4.x_range),width=timedelta(days=4), top='revenue',source=source4_premium, color='red', legend_label="Premium")
-fig4.vbar(x=dodge('Month', timedelta(days=3), range=fig4.x_range),width=timedelta(days=4), top='revenue',source=source4_character, color='blue', legend_label="Character Manager")
+fig4.vbar(x=dodge('Month', -3 * 86400000, range=fig4.x_range),
+          width=timedelta(days=4), top='revenue',
+          source=source4_premium, color='red', legend_label="Premium")
+fig4.vbar(x=dodge('Month', 3 * 86400000, range=fig4.x_range),
+          width=timedelta(days=4), top='revenue',
+          source=source4_character, color='blue', legend_label="Character Manager")
 
 hover4 = HoverTool()
 hover4.tooltips=[
