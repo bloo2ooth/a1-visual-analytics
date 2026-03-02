@@ -61,13 +61,24 @@ def preprocess_review_crash_data():
     df_final["Date"] = pd.to_datetime(df_final["Date"])
     return df_final
 
+def get_sales_by_sku():
+    df_sales = pd.read_csv("Data/processed_sales_data.csv")
+    df_sales = df_sales[df_sales['Product id'] == 'com.vansteinengroentjes.apps.ddfive']
+    df_sales['Transaction Date'] = pd.to_datetime(df_sales['Transaction Date'], format='mixed')
+    df_sales['Month'] = df_sales['Transaction Date'].dt.to_period('M').dt.to_timestamp()
+    df_sku = df_sales.groupby(['Month', 'Sku Id']).agg(
+        revenue=('Amount (Merchant Currency)', 'sum'),
+        transactions=('Amount (Merchant Currency)', 'count')
+    ).reset_index()
+    return df_sku
+
 def get_sales_volume():
     df_sales = pd.read_csv("Data/processed_sales_data.csv")
     # filter for right product 
     df_sales = df_sales[df_sales['Product id'] == 'com.vansteinengroentjes.apps.ddfive']
     # transform date to datetime format
     df_sales['Transaction Date'] = pd.to_datetime(df_sales['Transaction Date'], format='mixed')
-    df_sales['Month'] = df_sales['Transaction Date'].dt.to_period('M')
+    df_sales['Month'] = df_sales['Transaction Date'].dt.to_period('M').dt.to_timestamp()
     # group by month 
     df_monthly_sales = df_sales.groupby('Month').agg(sales_volume=('Amount (Merchant Currency)', 'sum'), 
                                                      num_transactions=('Amount (Merchant Currency)', 'count'),
@@ -98,9 +109,9 @@ def get_world_daily_sales():
     df_complete = countries.merge(transaction_days, how="cross")
     df_world_sales = df_complete.merge(df_world_sales, on=['ISO_A2', 'SOVEREIGNT', 'geometry', 'Transaction Date'], how='left')
     # fill na values
-    df_world_sales['sales_volume'].fillna(0)
-    df_world_sales['num_transactions'].fillna(0)
-    df_world_sales['num_refunds'].fillna(0)
+    df_world_sales['sales_volume']     = df_world_sales['sales_volume'].fillna(0)
+    df_world_sales['num_transactions'] = df_world_sales['num_transactions'].fillna(0)
+    df_world_sales['num_refunds']      = df_world_sales['num_refunds'].fillna(0)
     df_world_sales["Transaction Date"] = pd.to_datetime(df_world_sales["Transaction Date"],format="mixed", errors="coerce")
 
     return df_world_sales
