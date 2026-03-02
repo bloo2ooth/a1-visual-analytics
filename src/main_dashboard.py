@@ -136,13 +136,6 @@ df_world_sales = df_world_sales.merge(
     df_ratings_agg, left_on="ISO_A2", right_on="Country", how="left"
 )
 
-map_metric_select = Select(
-    title="Map Metric",
-    value="sales_volume",
-    options=[("sales_volume", "Sales Volume (EUR)"),
-             ("avg_rating", "Average Rating")]
-)
-
 df_world_sales_json = df_world_sales.copy()
 df_world_sales_json['Transaction Date'] = df_world_sales['Transaction Date'].dt.strftime("%Y-%m-%d")
 source3 = GeoJSONDataSource(
