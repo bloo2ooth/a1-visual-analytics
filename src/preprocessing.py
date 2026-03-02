@@ -117,9 +117,10 @@ def get_world_daily_sales():
     df_complete = countries.merge(transaction_days, how="cross")
     df_world_sales = df_complete.merge(df_world_sales, on=['ISO_A2', 'SOVEREIGNT', 'geometry', 'Transaction Date'], how='left')
     # fill na values
-    df_world_sales['sales_volume']     = df_world_sales['sales_volume'].fillna(0)
+    df_world_sales['sales_volume_display'] = df_world_sales['sales_volume']
+    df_world_sales['sales_volume'] = df_world_sales['sales_volume'].fillna(0)
     df_world_sales['num_transactions'] = df_world_sales['num_transactions'].fillna(0)
-    df_world_sales['num_refunds']      = df_world_sales['num_refunds'].fillna(0)
+    df_world_sales['num_refunds'] = df_world_sales['num_refunds'].fillna(0)
     df_world_sales["Transaction Date"] = pd.to_datetime(df_world_sales["Transaction Date"],format="mixed", errors="coerce")
 
     return df_world_sales

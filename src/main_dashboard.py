@@ -159,14 +159,15 @@ fig3 = figure(
 color_mapper = LinearColorMapper(
     palette=Viridis256,
     low=df_world_sales.sales_volume.min(),
-    high=df_world_sales.sales_volume.max()
+    high=df_world_sales.sales_volume.max(),
+    nan_color='grey'
 )
 fig3.patches(
     'xs',
     'ys',
     source=source3,
-    fill_color={'field': 'sales_volume', 'transform': color_mapper},
-    line_color='gray',
+    fill_color={'field': 'sales_volume_display', 'transform': color_mapper},
+    line_color='black',
     line_width=0.5
 )
 date_slider_world = DateSlider(
