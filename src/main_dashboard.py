@@ -103,7 +103,6 @@ fig3 = figure(
     title="World Map Sales Volume Visualization",
     width=700,
     height=400,
-    x_axis_type="datetime"
 )
 # create color map
 color_mapper = LinearColorMapper(
