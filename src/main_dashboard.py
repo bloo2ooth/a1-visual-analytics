@@ -1,16 +1,17 @@
 from bokeh.plotting import figure, show
 from bokeh.layouts import row, column
-from bokeh.models import ColumnDataSource, HoverTool, DateRangeSlider, Range1d
+from bokeh.models import ColumnDataSource, HoverTool, DateRangeSlider, Range1d, LinearColorMapper, GeoJSONDataSource, DateSlider
+from bokeh.palettes import Viridis256
 from bokeh.transform import dodge
 from bokeh.io import curdoc
 from datetime import timedelta
-from preprocessing import preprocess_sales_data, preprocess_review_crash_data, get_sales_volume
+from preprocessing import preprocess_review_crash_data, get_sales_volume, get_world_daily_sales
 import pandas as pd
 
 
 df_reviews_crash_data = preprocess_review_crash_data()
 
-source = ColumnDataSource(df_reviews_crash_data)
+source1 = ColumnDataSource(df_reviews_crash_data)
 
 fig1 = figure(
     title="Star Rating vs Daily Crashes",
@@ -19,7 +20,7 @@ fig1 = figure(
     x_range=Range1d(0, 5 + 0.5),
     y_range=Range1d(0, df_reviews_crash_data["Daily Crashes"].max() + 5)
 )
-fig1.scatter(x='avg_rating', y='Daily Crashes', source=source, size=8, color='red', alpha=0.7)
+fig1.scatter(x='avg_rating', y='Daily Crashes', source=source1, size=8, color='red', alpha=0.7)
 fig1.xaxis.axis_label = 'Average Star Rating'
 fig1.yaxis.axis_label = 'Number of Daily Crashes'
 
@@ -51,13 +52,13 @@ def update_rating_crash_plot(attr, old, new):
         (df_reviews_crash_data["Date"] <= pd.to_datetime(end, unit='ms'))
     ]
 
-    source.data = filtered.to_dict('list') 
+    source1.data = filtered.to_dict('list') 
 
 date_range.on_change("value", update_rating_crash_plot)
 
 # monthly sales #
 df_monthly_sales = get_sales_volume()
-source = ColumnDataSource(df_monthly_sales)
+source2 = ColumnDataSource(df_monthly_sales)
 
 fig2 = figure(
     title="Monthly Sales Volume and Transaction/Refund Count",
@@ -65,9 +66,9 @@ fig2 = figure(
     height=400,
     x_axis_type="datetime"
 )
-fig2.vbar(x=dodge('Month', -1, range=fig2.x_range),width=timedelta(days=4), top='sales_volume', source=source, color='red')
-fig2.vbar(x=dodge('Month', -1, range=fig2.x_range), width=timedelta(days=4), top='num_transactions', source=source, color='blue')
-fig2.vbar(x=dodge('Month', 1.15, range=fig2.x_range), width=timedelta(days=4), top='num_refunds', source=source, color='green')
+fig2.vbar(x=dodge('Month', -1, range=fig2.x_range),width=timedelta(days=4), top='sales_volume', source=source2, color='red')
+fig2.vbar(x=dodge('Month', -1, range=fig2.x_range), width=timedelta(days=4), top='num_transactions', source=source2, color='blue')
+fig2.vbar(x=dodge('Month', 1.15, range=fig2.x_range), width=timedelta(days=4), top='num_refunds', source=source2, color='green')
 fig2.xaxis.axis_label = 'Month'
 fig2.yaxis.axis_label = 'Monthly Sales Volume in EUR'
 
@@ -85,6 +86,49 @@ hover2.formatters = {
 fig2.add_tools(hover2)
 
 
-layout = row(column(date_range, fig1), column(fig2))
+df_world_sales = get_world_daily_sales()
+df_world_sales_json = df_world_sales.copy()
+df_world_sales_json['Transaction Date'] = df_world_sales['Transaction Date'].dt.strftime("%Y-%m-%d")
+source3 = GeoJSONDataSource(
+    geojson=df_world_sales_json.to_json()
+)
+
+fig3 = figure(
+    title="Monthly Sales Volume and Transaction/Refund Count",
+    width=800,
+    height=400,
+    x_axis_type="datetime"
+)
+# create color map
+color_mapper = LinearColorMapper(
+    palette=Viridis256,
+    low=df_world_sales.sales_volume.min(),
+    high=df_world_sales.sales_volume.max()
+)
+fig3.patches(
+    'xs',
+    'ys',
+    source=source3,
+    fill_color={'field': 'sales_volume', 'transform': color_mapper},
+    line_color='gray',
+    line_width=0.5
+)
+date_slider_world = DateSlider(
+    title="Select Date",
+    start=df_world_sales["Transaction Date"].min(),
+    end=df_world_sales["Transaction Date"].max(),
+    value=df_world_sales["Transaction Date"].min(),
+    step=1
+)
+
+def update_world_sales_plot(attr, old, new):
+    date = date_slider_world.value
+    filtered = df_world_sales[(df_world_sales["Transaction Date"] == pd.to_datetime(date, unit='ms')) ]
+    filtered['Transaction Date'] = filtered['Transaction Date'].dt.strftime("%Y-%m-%d")
+    source3.geojson = filtered.to_json()
+
+date_slider_world.on_change("value", update_world_sales_plot)
+
+layout = row(column(date_range, fig1), column(fig2, date_slider_world, fig3))
 
 curdoc().add_root(layout)

@@ -73,3 +73,25 @@ def get_sales_volume():
                                                      num_transactions=('Amount (Merchant Currency)', 'count'),
                                                      num_refunds=('Transaction Type', lambda x: (x=='Refund').sum())).reset_index()
     return df_monthly_sales
+
+
+import geopandas as gpd
+import matplotlib.pyplot as plt
+def get_world_daily_sales():
+    world = gpd.read_file('Data/ne_110m_admin_0_countries.shp')
+    world = world[['SOVEREIGNT', 'ISO_A2', 'geometry']]
+    df_sales = pd.read_csv("Data/processed_sales_data.csv")
+    # filter for right app
+    df_sales = df_sales[df_sales['Product id'] == 'com.vansteinengroentjes.apps.ddfive']
+    # group sales data by date and country
+    df_country_day_sales = df_sales.groupby(["Transaction Date", "Buyer Country"], as_index=False).agg(sales_volume=('Amount (Merchant Currency)', 'sum'), 
+                                                                                    num_transactions=('Amount (Merchant Currency)', 'count'),
+                                                                                    num_refunds=('Transaction Type', lambda x: (x=='Refund').sum())).reset_index()
+    df_world_sales = world.merge(df_country_day_sales, left_on='ISO_A2', right_on='Buyer Country', how='left')
+    # remove na values
+    df_world_sales['sales_volume'].fillna(0)
+    df_world_sales['num_transactions'].fillna(0)
+    df_world_sales['num_refunds'].fillna(0)
+    df_world_sales["Transaction Date"] = pd.to_datetime(df_world_sales["Transaction Date"],format="mixed", errors="coerce")
+    return df_world_sales
+get_world_daily_sales()
