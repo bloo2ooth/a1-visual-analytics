@@ -1,7 +1,7 @@
 from bokeh.plotting import figure, show
 from bokeh.layouts import row, column
-from bokeh.models import ColumnDataSource, HoverTool, DateRangeSlider, Range1d, LinearColorMapper, GeoJSONDataSource, DateSlider, LinearAxis, ColorBar
-from bokeh.palettes import Viridis256
+from bokeh.models import ColumnDataSource, HoverTool, DateRangeSlider, Range1d, LinearColorMapper, GeoJSONDataSource, DateSlider, LinearAxis, ColorBar, Select
+from bokeh.palettes import Viridis256, RdYlGn11
 from bokeh.transform import dodge
 from bokeh.io import curdoc
 from datetime import timedelta
@@ -9,7 +9,7 @@ from preprocessing import preprocess_review_crash_data, get_sales_volume, get_wo
 import pandas as pd
 
 
-df_reviews_crash_data = preprocess_review_crash_data()
+df_reviews_crash_data, df_ratings_country = preprocess_review_crash_data()  
 
 source1 = ColumnDataSource(df_reviews_crash_data)
 
@@ -37,13 +37,35 @@ hover1.tooltips=[
     ('Date', '@Date{%F}'),
     ('Average Star Rating', '@{avg_rating}'),
     ('Number of Reviews', '@{review_count}'),
-    ('Daily Crashes', '@{Daily Crashes}')
+    ('Daily Crashes', '@{Daily Crashes}'),
+    ('Daily ANRs', '@{Daily ANRs}')    
 ]
-
 hover1.formatters = {
     '@Date': 'datetime'
 }
 fig1.add_tools(hover1)
+# crashes and ANRs over time 
+fig1b = figure(                                                                     
+    title="Daily Crashes and ANRs over Time",                                       
+    height=250,                                                                     
+    width=700,                                                                      
+    x_axis_type="datetime"                                                          
+)                                                                                   
+fig1b.line(x='Date', y='Daily Crashes', source=source1,                            
+           color='red', legend_label="Crashes")                                     
+fig1b.line(x='Date', y='Daily ANRs', source=source1,                               
+           color='orange', legend_label="ANRs")                                     
+fig1b.xaxis.axis_label = 'Date'                                                    
+fig1b.yaxis.axis_label = 'Count'                                                   
+fig1b.legend.click_policy = "hide"         
+hover1b = HoverTool()
+hover1b.tooltips = [
+    ('Date', '@Date{%F}'),
+    ('Daily Crashes', '@{Daily Crashes}'),
+    ('Daily ANRs', '@{Daily ANRs}')
+]
+hover1b.formatters = {'@Date': 'datetime'}
+fig1b.add_tools(hover1b)
 
 def update_rating_crash_plot(attr, old, new):
     start, end = date_range.value
@@ -93,12 +115,35 @@ fig2.add_tools(hover2)
 
 
 df_world_sales = get_world_daily_sales()
+# prepare ratings per country for map overlay   
+df_ratings_country["Date"] = pd.to_datetime(df_ratings_country["Date"])
+df_ratings_agg = df_ratings_country.groupby("Country").agg(
+    avg_rating=("Daily Average Rating", "mean")
+).reset_index()
+# merge average ratings into world sales for geographic display     
+df_world_sales = df_world_sales.merge(
+    df_ratings_agg, left_on="ISO_A2", right_on="Country", how="left"
+)
+
+map_metric_select = Select(
+    title="Map Metric",
+    value="sales_volume",
+    options=[("sales_volume", "Sales Volume (EUR)"),
+             ("avg_rating", "Average Rating")]
+)
+
 df_world_sales_json = df_world_sales.copy()
 df_world_sales_json['Transaction Date'] = df_world_sales['Transaction Date'].dt.strftime("%Y-%m-%d")
 source3 = GeoJSONDataSource(
     geojson=df_world_sales_json.to_json()
 )
-
+# allow management to toggle between sales volume and average rating                
+map_metric_select = Select(                                                         
+    title="Map Metric",                                                             
+    value="sales_volume",                                                           
+    options=[("sales_volume", "Sales Volume (EUR)"),                               
+             ("avg_rating", "Average Rating")]                                      
+)                                                                                   
 fig3 = figure(
     title="World Map Sales Volume Visualization",
     width=700,
@@ -129,6 +174,15 @@ date_slider_world = DateSlider(
 color_bar = ColorBar(color_mapper=color_mapper, label_standoff=12, location=(0,0), title="Sales Volume")
 
 fig3.add_layout(color_bar, 'right')
+# add hover showing both sales and rating per country                               
+hover3 = HoverTool()                                                                
+hover3.tooltips = [                                                                 
+    ('Country', '@SOVEREIGNT'),                                                     
+    ('Sales Volume', '@sales_volume{0.00}'),                                        
+    ('Transactions', '@num_transactions'),                                          
+    ('Avg Rating', '@avg_rating{0.00}')                                             
+]                                                                                   
+fig3.add_tools(hover3)                                                              
 
 def update_world_sales_plot(attr, old, new):
     date = date_slider_world.value
@@ -137,6 +191,17 @@ def update_world_sales_plot(attr, old, new):
     source3.geojson = filtered.to_json()
 
 date_slider_world.on_change("value", update_world_sales_plot)
+
+# update color mapper when metric selection changes                                 
+def update_map_metric(attr, old, new):                                             
+    metric = map_metric_select.value                                                
+    color_mapper.low  = df_world_sales[metric].min()                               
+    color_mapper.high = df_world_sales[metric].max()                               
+    # update patches to use selected metric field                                   
+    fig3.renderers[0].glyph.fill_color = {'field': metric,'transform': color_mapper}              
+    color_bar.title = "Sales Volume (EUR)" if metric == "sales_volume" else "Avg Rating"  
+
+map_metric_select.on_change("value", update_map_metric)                            
 
 df_sku = get_sales_by_sku()
 source4_premium = ColumnDataSource(df_sku[df_sku['Sku Id'] == 'premium'])
@@ -152,8 +217,8 @@ fig4.xaxis.axis_label = 'Month'
 fig4.yaxis.axis_label = 'Monthly Sales Volume in EUR'
 fig4.y_range = Range1d(start=0, end=df_monthly_sales['sales_volume'].max())
 
-fig4.vbar(x=dodge('Month', -1, range=fig4.x_range),width=timedelta(days=4), top='revenue', source=source4_premium, color='red', legend_label="Premium")
-fig4.vbar(x=dodge('Month', 100000000, range=fig4.x_range), width=timedelta(days=4), top='transactions', source=source4_character, color='blue', legend_label="Character Manager")
+fig4.vbar(x=dodge('Month', -timedelta(days=3), range=fig4.x_range),width=timedelta(days=4), top='revenue',source=source4_premium, color='red', legend_label="Premium")
+fig4.vbar(x=dodge('Month', timedelta(days=3), range=fig4.x_range),width=timedelta(days=4), top='revenue',source=source4_character, color='blue', legend_label="Character Manager")
 
 hover4 = HoverTool()
 hover4.tooltips=[
@@ -167,6 +232,9 @@ hover4.formatters = {
 
 fig4.add_tools(hover4)
 
-layout = row(column(fig4, date_range, fig1), column(fig2, date_slider_world, fig3))
+layout = row(
+    column(fig4, date_range, fig1, fig1b),
+    column(fig2, map_metric_select, date_slider_world, fig3)
+)
 
 curdoc().add_root(layout)
