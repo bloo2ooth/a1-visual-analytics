@@ -49,17 +49,25 @@ def preprocess_sales_data():
     df_complete.to_csv("Data/processed_sales_data.csv", index=False)
 
 def preprocess_review_crash_data():
-    df_reviews, df_stats_ratings = load_review_data()
+    # load review, crash and ratings country data
+    df_reviews, df_crashes, df_ratings_country = load_review_data()
     # split date and timestamp column
     df_reviews[['Date', 'Timestamp']] = df_reviews['Review Submit Date and Time'].str.split('T', expand=True)
     # remove reviews where creation was before 2021-06 as we care about creation of reviews not edit
     df_reviews = df_reviews[df_reviews['Date'] >= '2021-06-01']
-    # get the mean rating per day
-    df_reviews = df_reviews.groupby(['Package Name', 'Date']).agg(avg_rating=('Star Rating', 'mean'),review_count=('Star Rating', 'count')).reset_index()
-    df_final = df_reviews.merge(df_stats_ratings, on=['Date', 'Package Name'], how='left')
-    # convert datetime to datetime format for bokeh 
+    # get the mean rating and review count per day
+    df_reviews_agg = df_reviews.groupby(['Package Name', 'Date']).agg(
+        avg_rating=('Star Rating', 'mean'),
+        review_count=('Star Rating', 'count')
+    ).reset_index()
+    # merge aggregated reviews with crash data on date and package name
+    df_final = df_reviews_agg.merge(df_crashes, on=['Date', 'Package Name'], how='left')
+    # convert datetime to datetime format for bokeh
     df_final["Date"] = pd.to_datetime(df_final["Date"])
-    return df_final
+    # return merged review/crash dataframe and ratings per country separately
+    return df_final, df_ratings_country
+
+
 
 def get_sales_by_sku():
     df_sales = pd.read_csv("Data/processed_sales_data.csv")
