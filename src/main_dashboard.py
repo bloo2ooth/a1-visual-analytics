@@ -1,6 +1,6 @@
 from bokeh.plotting import figure, show
 from bokeh.layouts import row, column
-from bokeh.models import ColumnDataSource, HoverTool, DateRangeSlider, Range1d, LinearColorMapper, GeoJSONDataSource, DateSlider
+from bokeh.models import ColumnDataSource, HoverTool, DateRangeSlider, Range1d, LinearColorMapper, GeoJSONDataSource, DateSlider, LinearAxis
 from bokeh.palettes import Viridis256
 from bokeh.transform import dodge
 from bokeh.io import curdoc
@@ -66,11 +66,17 @@ fig2 = figure(
     height=400,
     x_axis_type="datetime"
 )
-fig2.vbar(x=dodge('Month', -1, range=fig2.x_range),width=timedelta(days=4), top='sales_volume', source=source2, color='red')
-fig2.vbar(x=dodge('Month', -1, range=fig2.x_range), width=timedelta(days=4), top='num_transactions', source=source2, color='blue')
-fig2.vbar(x=dodge('Month', 1.15, range=fig2.x_range), width=timedelta(days=4), top='num_refunds', source=source2, color='green')
 fig2.xaxis.axis_label = 'Month'
 fig2.yaxis.axis_label = 'Monthly Sales Volume in EUR'
+# add a seperate y functions for refund due to different dimensions
+fig2.y_range = Range1d(start=0, end=df_monthly_sales['sales_volume'].max())
+fig2.extra_y_ranges = {"refund": Range1d(start=0, end=df_monthly_sales['num_refunds'].max()+1)}
+fig2.add_layout(LinearAxis(y_range_name="refund", axis_label="Number of Refunds"), 'right')
+
+fig2.vbar(x=dodge('Month', -1, range=fig2.x_range),width=timedelta(days=4), top='sales_volume', source=source2, color='red')
+fig2.vbar(x=dodge('Month', -1, range=fig2.x_range), width=timedelta(days=4), top='num_transactions', source=source2, color='blue')
+fig2.line(x='Month', y='num_refunds', y_range_name='refund', source=source2, color='green')
+
 
 hover2 = HoverTool()
 hover2.tooltips=[
