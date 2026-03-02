@@ -80,7 +80,10 @@ import matplotlib.pyplot as plt
 def get_world_daily_sales():
     world = gpd.read_file('Data/ne_110m_admin_0_countries.shp')
     world = world[['SOVEREIGNT', 'ISO_A2', 'geometry']]
-    df_sales = pd.read_csv("Data/processed_sales_data.csv")
+    # manually add ISO_A2 for france
+    world.loc[world['SOVEREIGNT'] == 'France', 'ISO_A2'] = 'FR'
+    world.loc[world['SOVEREIGNT'] == 'Norway', 'ISO_A2'] = 'NO'
+    df_sales = pd.read_csv("Data/processed_sales_data.csv")    
     # filter for right app
     df_sales = df_sales[df_sales['Product id'] == 'com.vansteinengroentjes.apps.ddfive']
     # group sales data by date and country
@@ -88,10 +91,16 @@ def get_world_daily_sales():
                                                                                     num_transactions=('Amount (Merchant Currency)', 'count'),
                                                                                     num_refunds=('Transaction Type', lambda x: (x=='Refund').sum())).reset_index()
     df_world_sales = world.merge(df_country_day_sales, left_on='ISO_A2', right_on='Buyer Country', how='left')
-    # remove na values
+    # we need to add rows for each country for each day with transactions for the graph to work
+    # get all transaction days and countries
+    transaction_days = pd.DataFrame({"Transaction Date": df_sales["Transaction Date"].unique()})
+    countries = world.drop_duplicates()
+    df_complete = countries.merge(transaction_days, how="cross")
+    df_world_sales = df_complete.merge(df_world_sales, on=['ISO_A2', 'SOVEREIGNT', 'geometry', 'Transaction Date'], how='left')
+    # fill na values
     df_world_sales['sales_volume'].fillna(0)
     df_world_sales['num_transactions'].fillna(0)
     df_world_sales['num_refunds'].fillna(0)
     df_world_sales["Transaction Date"] = pd.to_datetime(df_world_sales["Transaction Date"],format="mixed", errors="coerce")
+
     return df_world_sales
-get_world_daily_sales()
